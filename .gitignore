@@ -6,6 +6,9 @@
 *.user
 *.userosscache
 *.sln.docstates
+.wlpm
+wlpm-package.json
+war3map.lua
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
