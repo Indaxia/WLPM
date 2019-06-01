@@ -13,7 +13,7 @@ namespace wlpm
         private bool VerboseLog = false;
         private PackageManager pm;
         private ModuleManager mm;
-        private string Version = "0.2-beta";
+        private string Version = "0.3-beta";
         private int RetryAttempt = 0;
         private List<FileSystemWatcher> Watchers = null;
         private Dictionary<string, DateTime> WatcherChangedFilesCache;
@@ -25,21 +25,23 @@ namespace wlpm
             if(args.Length < 1) {
                 Console.WriteLine("Warcraft 3 Lua Package Manager "+Version+" (WLPM) by ScorpioT1000");
                 Console.WriteLine("Arguments:");
-                Console.WriteLine("  install <package> <version>");
-                Console.WriteLine("    - adds a new package to your package file and installs dependencies");
-                Console.WriteLine("  build");
-                Console.WriteLine("    - builds all downloaded modules into target lua file");
+                Console.WriteLine("  install <package> [<version>]");
+                Console.WriteLine("  - adds a new package to your package file and installs dependencies. Omit version to require head revision");
                 Console.WriteLine("  update");
-                Console.WriteLine("    - removes any package data and re-downloads it from the internet");
+                Console.WriteLine("  - removes any package data and re-downloads it from the internet");
+                Console.WriteLine("  build");
+                Console.WriteLine("  - builds all downloaded modules and sources into target lua file");
+                Console.WriteLine("  update build");
+                Console.WriteLine("  - runs 'update' then 'build'");
                 Console.WriteLine("  watch");
-                Console.WriteLine("    - watches for changes of the sources and target and performs build/update");
+                Console.WriteLine("  - watches for changes of the sources and target and performs update or build");
                 Console.WriteLine("Options:");
-                Console.WriteLine("  -detailed");
-                Console.WriteLine("    - add this option to get more detailed info about how it is running");
+                Console.WriteLine("  --detailed");
+                Console.WriteLine("  - add this option to get more detailed info about the internal processes");
                 return;
             }
 
-            if(hasArg(args, "-detailed")) {
+            if(hasArg(args, "--detailed")) {
                 VerboseLog = true;
             }
 
@@ -53,26 +55,29 @@ namespace wlpm
                     pm.RefreshPackages(hasArg(args, "update"), hasArg(args, "install"));
                     if(hasArg(args, "build")) {
                         mm.RebuildModules();
+                        return;
                     } else if(hasArg(args, "install")) {
                         if(args.Length < 2) {
                             Console.WriteLine("install format: install url [version]");
                         } else {
                             pm.InstallDependency(args[1], args.Length > 2 ? args[2] : "*");
                         }
+                        return;
                     } else if(hasArg(args, "watch")) {
                         mm.RebuildModules();
                         WatchForChanges();
                     } else if(hasArg(args, "update")) {
-                        // update is done already
+                        return;
                     } else {
                         Console.WriteLine("Wrong command, execute the program without arguments to get help");
+                        return;
                     }
                 } catch(Exception e) {
                     ConsoleColorChanger.UseWarning();
                     Console.Error.WriteLine("General Error: " + e.Message);
                     Console.Error.WriteLine("Source: " + e.Source);
                     Console.Error.WriteLine("");
-                    Console.Error.WriteLine("Press any key to start again. Press CTRL+C to stop.");
+                    Console.Error.WriteLine("Press any key to try again. Press CTRL+C to stop.");
                     ConsoleColorChanger.UsePrimary();
                     Console.ReadKey();
                     pm.Clear();
@@ -265,19 +270,19 @@ namespace wlpm
                 Console.WriteLine(((new Random()).Next(100) < 50 ? "Nice!" : "Great!") + " Watching for changes:");
 
                 ConsoleColorChanger.UseSecondary();
-                Console.Write("    " + pm.ProjectPackageName);
+                Console.Write("  " + pm.ProjectPackageName);
                 ConsoleColorChanger.UsePrimary();
                 Console.WriteLine(" -> refresh packages");
 
                 if(sources.Length > 0) {
                     ConsoleColorChanger.UseSecondary();
-                    Console.Write("    " + sources);
+                    Console.Write("  " + sources);
                     ConsoleColorChanger.UsePrimary();
                     Console.WriteLine(" -> rebuild modules");
                 }
 
                 ConsoleColorChanger.UseSecondary();
-                Console.Write("    " + pm.ProjectPackage.Target);
+                Console.Write("  " + pm.ProjectPackage.Target);
                 ConsoleColorChanger.UsePrimary();
                 Console.WriteLine(" -> rebuild modules");
             }
@@ -291,7 +296,7 @@ namespace wlpm
 
         private void PrintWatcherEvent(string prefix, string action, string filename = "", string anotherFilename = "")
         {
-            if(prefix != "") Console.Write("    "+prefix+" ");
+            if(prefix != "") Console.Write("  "+prefix+" ");
             ConsoleColorChanger.UseAccent();
             Console.Write(action+" ");
             ConsoleColorChanger.UsePrimary();

@@ -74,7 +74,7 @@ namespace wlpm
             targetHeader += "\r\r-- Warcraft 3 Lua Package Manager " + AppVersion;
             targetHeader += "\r-- Build time: " + DateTime.Now.ToString("yyyy.MM.dd HH:mm:ss zzz");
             if(pm.ProjectPackage.InsertModuleLoader) {
-              Console.Write("    Code of ");
+              Console.Write("  Code of ");
               ConsoleColorChanger.UseSecondary();
               Console.Write("WLPM Module Manager");
               ConsoleColorChanger.UsePrimary();
@@ -90,9 +90,13 @@ namespace wlpm
             }
             targetHeader += "\r\r";
 
-            foreach(KeyValuePair<string, PackageDependency> dep in pm.Dependencies) {
-                string code = GetCodeFor(dep.Value);
-                if(dep.Value.TopOrder) {
+            foreach(string index in pm.DependenciesOrderIndex) {
+                if(! pm.Dependencies.ContainsKey(index)) {
+                  throw new ModuleException("Dependencies collection has no index '"+index+"' but it's stored in indexes. Try to run 'wlpm update'");
+                }
+                PackageDependency dep = pm.Dependencies[index];
+                string code = GetCodeFor(dep);
+                if(dep.TopOrder) {
                     targetTop += "\r\r" + code;
                 } else {
                     targetBottom += "\r\r" + code;
@@ -117,7 +121,7 @@ namespace wlpm
 
         private string GetCodeFor(PackageDependency dep)
         {
-            Console.Write("    Building ");
+            Console.Write("  Building ");
             ConsoleColorChanger.UseSecondary();
             Console.WriteLine(dep.Resource);
             ConsoleColorChanger.UsePrimary();
@@ -155,7 +159,7 @@ namespace wlpm
             }
             var ends = source.IndexOf(end) + end.Length;
             if(ends == -1) {
-                throw new ModuleException("    Cannot clean target file: end tag not found ("+end+")");
+                throw new ModuleException("  Cannot clean target file: end tag not found ("+end+")");
             }
             if(starts < 2) {
                 return source.Substring(ends);

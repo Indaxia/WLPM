@@ -16,6 +16,7 @@ namespace wlpm
         public string ProjectPackageName = "wlpm-package.json";
         public string ProjectDirectory = "";
         public Dictionary<string, PackageDependency> Dependencies;
+        public List<string> DependenciesOrderIndex;
 
         private RepositoryManager rm;
         private string ProjectStateLockName = "state.lock.json";
@@ -26,6 +27,7 @@ namespace wlpm
         {
             ProjectDirectory = projectDir;
             Dependencies = new Dictionary<string, PackageDependency>();
+            DependenciesOrderIndex = new List<string>();
             VerboseLog = verboseLog;
             rm = new RepositoryManager();
         }
@@ -33,6 +35,7 @@ namespace wlpm
         public void Clear()
         {
             Dependencies.Clear();
+            DependenciesOrderIndex.Clear();
         }
 
         public string GetDependencyDir(PackageDependency dep)
@@ -63,7 +66,7 @@ namespace wlpm
                     lines.Add(line);
                     if(line.Contains("\"dependencies\":")) {
                         found = true;
-                        lines.Add("        \"" + url + "\": \"" + ((version != "*" && version.Length > 0) ? version : "*") + "\",");
+                        lines.Add("      \"" + url + "\": \"" + ((version != "*" && version.Length > 0) ? version : "*") + "\",");
                     }
                 }
                 rdr.Close();
@@ -71,9 +74,9 @@ namespace wlpm
                 if(!found) {
                     lines.RemoveAt(0);
                     lines.Insert(0, "{");
-                    lines.Insert(0, "    \"dependencies\": {");
-                    lines.Insert(0, "        \"" + url + "\": \"" + ((version != "*" && version.Length > 0) ? version : "*") + "\"");
-                    lines.Insert(0, "    },");
+                    lines.Insert(0, "  \"dependencies\": {");
+                    lines.Insert(0, "      \"" + url + "\": \"" + ((version != "*" && version.Length > 0) ? version : "*") + "\"");
+                    lines.Insert(0, "  },");
                 }
                 foreach (string strNewLine in lines) wrtr.WriteLine(strNewLine);
                 wrtr.Close(); 
@@ -118,6 +121,7 @@ namespace wlpm
                     foreach(JProperty d in newDeps) {
                         PackageDependency dep = new PackageDependency(d, ProjectStateLockName);
                         Dependencies.Add(dep.id, dep);
+                        DependenciesOrderIndex.Add(dep.id);
                     }
                     foreach(PackageDependency oldDep in oldPackageDeps) {
                         if(newDeps[oldDep.Resource] == null) {
@@ -132,7 +136,7 @@ namespace wlpm
                         if(Dependencies.ContainsKey(d.id)) {
                             continue;
                         } else {
-                            Console.Write("    New dependency found: ");
+                            Console.Write("  New dependency found: ");
                             ConsoleColorChanger.UseSecondary();
                             Console.WriteLine(d.Resource+" "+d.Version);
                             ConsoleColorChanger.UsePrimary();
@@ -144,11 +148,12 @@ namespace wlpm
             }
 
             if(!loadAgain) {
-                Console.WriteLine("    Dependencies are OK");
+                Console.WriteLine("  Dependencies are OK");
             }
 
             if(loadAgain && !neverLoadAgain) {
                 Dependencies.Clear();
+                DependenciesOrderIndex.Clear();
                 UpdatePackages();
             }
 
@@ -165,6 +170,7 @@ namespace wlpm
             Directory.CreateDirectory(tmpPath);
 
             Dependencies.Clear();
+            DependenciesOrderIndex.Clear();
 
             foreach(PackageDependency dep in ProjectPackage.Dependencies) {
                 LoadDependency(dep);
@@ -181,7 +187,7 @@ namespace wlpm
         private void LoadDependency(PackageDependency dep, int depth = 0)
         {
             if(depth > 512) {
-                throw new PackageException("    Dependency loop detected");
+                throw new PackageException("  Dependency loop detected");
             }
 
             string tmpRoot = Path.Combine(ProjectDirectory, ProjectPackageDir, "tmp");
@@ -190,17 +196,18 @@ namespace wlpm
             }
             Directory.CreateDirectory(tmpRoot);
 
-            Package p = DownloadDependency(dep, tmpRoot);
+            Package p = DownloadDependency(dep, tmpRoot, depth);
             foreach(PackageDependency d in p.Dependencies) {
-                if(!d.sameAs(dep)) {
+                if(!d.sameAs(dep) && !Dependencies.ContainsKey(d.id)) {
                     LoadDependency(d, ++depth);
                 }
             }
             dep.Sources = p.Sources;
             Dependencies.Add(dep.id, dep);
+            DependenciesOrderIndex.Add(dep.id);
         }
 
-        private Package DownloadDependency(PackageDependency dep, string tmpRoot)
+        private Package DownloadDependency(PackageDependency dep, string tmpRoot, int depth = 0)
         {
             string dirPath = Path.Combine(ProjectDirectory, ProjectPackageDir, "packages", dep.id);
             var provider = rm.getProvider(dep.Resource);
@@ -208,8 +215,13 @@ namespace wlpm
             if(Directory.Exists(dirPath)) {
                 Directory.Delete(dirPath, true);
             }
-
-            Console.Write("    Downloading "+(dep.Type == DependencyType.File ? "file" : "repository")+ ": ");
+            if(depth == 0) {
+                Console.Write("  -> Loading "+(dep.Type == DependencyType.File ? "file: " : "package: "));
+            } else {
+                Console.Write(new String(' ', depth*2)+"  -> Loading "+(dep.Type == DependencyType.File ? "file: " : "package: "));
+            }
+            ConsoleColorChanger.UseAccent();
+            Console.Write(dep.Version+" ");
             ConsoleColorChanger.UseSecondary();
             Console.WriteLine(dep.Resource);
             ConsoleColorChanger.UsePrimary();
@@ -232,7 +244,7 @@ namespace wlpm
 
                     return result;
                 } else {
-                    throw new PackageException("    Cannot resolve package: " + dep.Resource + ", wrong URL host for file type: '" + dep.Resource + "'");
+                    throw new PackageException("  Cannot resolve package: " + dep.Resource + ", wrong URL host for file type: '" + dep.Resource + "'");
                 }
             } else if(provider != null) {
                 string tmpFilePath = Path.Combine(tmpRoot, "wlpm-repository.zip");
@@ -248,16 +260,16 @@ namespace wlpm
                 string packageConfigPath = Path.Combine(dirPath, ProjectPackageName);
 
                 if(! File.Exists(packageConfigPath)) {
-                    throw new PackageException("    Cannot resolve package: " + dep.Resource + ", file '" + ProjectPackageName + "' not found inside");
+                    throw new PackageException("  Cannot resolve package: " + dep.Resource + ", file '" + ProjectPackageName + "' not found inside");
                 }
                 return new Package(File.ReadAllText(packageConfigPath));
             }
-            throw new PackageException("    Cannot resolve package: " + dep.Resource + ", no suitable repository provider for this url");
+            throw new PackageException("  Cannot resolve package: " + dep.Resource + ", no suitable repository provider for this url");
         }
 
         private Package FindProjectPackage()
         {
-            Console.Write("    Locating ");
+            Console.Write("  Locating ");
             ConsoleColorChanger.UseSecondary();
             Console.Write(ProjectPackageName);
             ConsoleColorChanger.UsePrimary();
