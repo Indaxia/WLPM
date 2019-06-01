@@ -81,6 +81,46 @@ If you want to publish your package folow these steps:
 4. (optional) add git tag to the repository
 5. Now this is a WLPM package!
 
+## Full config example (wlpm-package.json) 
+
+```js
+{
+    "title": "WLPM - Demo Map Package", // (optional) your package or root project title
+    "author": "ScorpioT1000 / scorpiot1000@yandex.ru", // (optional) author information
+    "license": "MIT", // (optional) source code license
+    "dependencies": { // list of packages and files required by your source code
+        // github repository from a master branch
+        "https://github.com/123/456": "*",
+        
+        // github repository from the release tagged as "1.1.1"
+        "https://github.com/123/456": "1.1.1",
+        
+        // bitbucket repository from the release tagged as "1.0.0" in an object format
+        "https://bitbucket.org/123/789": { "type": "package", "version": "1.0.0" },
+        
+        // inserts a file directly from the repository
+        "https://github.com/123/456/blob/master/somefile.lua": { 
+            "type": "file", 
+            "topOrder": true  // omit this option or set to false to insert the file after repositories' sources
+        }
+    },
+    // (optional for root project) where your sources are stored. It's important for the package, but can be omitted for root project (it watches "target")
+    "sources": [
+        "src"
+    ],
+    // (optional) where to store compiled lua build. It works for root project only.
+    "target": "war3map.lua",
+    // (not implemented, optional) execute this command after build, e.g. "cmd /K echo Hello!"
+    "afterBuild": "",
+    // (optional) set this to false if you want to replace built-in module manager by your own
+    "insertModuleLoader": true,
+    // (optional) allow more hosts for direct file dependency (allows github.com and bitbucket.org by default). It works for root project only.
+    "allowHosts": []
+    // (optional) set custom file extensions when building "sources"
+    "sourceExtensions": "*.lua"
+}
+```
+
 ## Restrictions
 
 1. It doesn't support partial version placeholders like ```1.*``` because it doesn't use package registry
@@ -99,3 +139,5 @@ $version = git describe --tags --abbrev=0
 dotnet publish -c Release --self-contained --runtime win10-x64 /property:Version=$version
 dotnet publish -c Release --self-contained --runtime win-x86 /property:Version=$version
 ```
+
+ScorpioT1000 © 2019
