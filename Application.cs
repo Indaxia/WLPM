@@ -22,9 +22,11 @@ namespace wlpm
         {
             Version = version;
             ConsoleColorChanger.SetPrimary(Console.ForegroundColor);
+            var noExit = hasArg(args, "--noexit");
 
-            if(args.Length < 1) {
+            if(args.Length < 1 || noExit) {
                 Console.WriteLine("Warcraft 3 Lua Package Manager "+Version+" (WLPM) by ScorpioT1000");
+                Console.WriteLine("Get more info at: https://github.com/Indaxia/WLPM");
                 Console.WriteLine("Arguments:");
                 Console.WriteLine("  install <package> [<version>]");
                 Console.WriteLine("  - adds a new package to your package file and installs dependencies. Omit version to require head revision");
@@ -39,6 +41,14 @@ namespace wlpm
                 Console.WriteLine("Options:");
                 Console.WriteLine("  --detailed");
                 Console.WriteLine("  - add this option to get more detailed info about the internal processes");
+                Console.WriteLine("");
+
+                if(noExit) {
+                    ConsoleColorChanger.UseAccent();
+                    Console.Error.WriteLine("Press any key to exit.");
+                    ConsoleColorChanger.UsePrimary();
+                    Console.ReadKey();
+                }
                 return;
             }
 

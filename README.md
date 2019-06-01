@@ -4,6 +4,8 @@ Provides package management features and es6-like Lua modules to your Warcraft 3
 
 ## Features
 
+## Download
+
 ## Quick Start
 
 ## Advanced Usage

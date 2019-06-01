@@ -9,6 +9,7 @@
 .wlpm
 wlpm-package.json
 war3map.lua
+Setup/Output
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
