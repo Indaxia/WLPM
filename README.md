@@ -24,9 +24,9 @@ We introduce a new way of working with dependencies - [WLPM Module Manager](http
 
 ## Download
 
-[WLPM for Windows 10 x64](https://indaxia.com/public/releases/wlpm/0.4-beta/Install%20WLPM%20for%20Windows%2010%20x64)
+[WLPM for Windows 10 x64](https://indaxia.com/public/releases/wlpm/0.5-beta/Install%20WLPM%20for%20Windows%2010%20x64.exe)
 
-[WLPM for any Windows](https://indaxia.com/public/releases/wlpm/0.4-beta/Install%20WLPM%20for%20Windows) (legacy)
+[WLPM for any Windows](https://indaxia.com/public/releases/wlpm/0.5-beta/Install%20WLPM%20for%20Windows.exe) (legacy)
 
 WLPM for macOS (planned, waiting for [Warcraft 3 fixes](https://us.battle.net/forums/en/bnet/topic/20771617132))
 
