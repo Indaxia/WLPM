@@ -30,6 +30,11 @@ namespace wlpm
             rm = new RepositoryManager();
         }
 
+        public void Clear()
+        {
+            Dependencies.Clear();
+        }
+
         public string GetDependencyDir(PackageDependency dep)
         {
             return Path.Combine(ProjectDirectory, ProjectPackageDir, "packages", dep.id);
@@ -45,7 +50,9 @@ namespace wlpm
             string id = PackageDependency.generateId(url, version);
 
             if(Dependencies.ContainsKey(id)) {
+                ConsoleColorChanger.UseWarning();
                 Console.WriteLine("This dependency already exists");
+                ConsoleColorChanger.UsePrimary();
             } else {
                 string packageConfigPath = Path.Combine(ProjectDirectory, ProjectPackageName);
                 ArrayList lines = new ArrayList();
@@ -78,11 +85,13 @@ namespace wlpm
         public void RefreshPackages(bool loadAgain = false, bool neverLoadAgain = false)
         {
             isBusy = true;
+            ConsoleColorChanger.UseAccent();
             if(loadAgain) {
-                Console.WriteLine("================= Refreshing Dependencies =================");
+                Console.WriteLine("Refreshing Dependencies");
             } else {
-                Console.WriteLine("================= Locating Dependencies =================");
+                Console.WriteLine("Locating Dependencies");
             }
+            ConsoleColorChanger.UsePrimary();
 
             List<PackageDependency> oldPackageDeps = new List<PackageDependency>();
 
@@ -123,7 +132,10 @@ namespace wlpm
                         if(Dependencies.ContainsKey(d.id)) {
                             continue;
                         } else {
-                            Console.WriteLine("New dependency found: "+d.Resource+" "+d.Version);
+                            Console.Write("    New dependency found: ");
+                            ConsoleColorChanger.UseSecondary();
+                            Console.WriteLine(d.Resource+" "+d.Version);
+                            ConsoleColorChanger.UsePrimary();
                             loadAgain = true; // TODO: download required dependencies only
                             break;
                         }
@@ -131,12 +143,15 @@ namespace wlpm
                 }
             }
 
+            if(!loadAgain) {
+                Console.WriteLine("    Dependencies are OK");
+            }
+
             if(loadAgain && !neverLoadAgain) {
                 Dependencies.Clear();
                 UpdatePackages();
             }
 
-            Console.WriteLine("================= Refreshing DONE =================");
             isBusy = false;
         }
 
@@ -166,7 +181,7 @@ namespace wlpm
         private void LoadDependency(PackageDependency dep, int depth = 0)
         {
             if(depth > 512) {
-                throw new PackageException("Dependency loop detected");
+                throw new PackageException("    Dependency loop detected");
             }
 
             string tmpRoot = Path.Combine(ProjectDirectory, ProjectPackageDir, "tmp");
@@ -194,7 +209,10 @@ namespace wlpm
                 Directory.Delete(dirPath, true);
             }
 
-            Console.WriteLine("Downloading "+(dep.Type == DependencyType.File ? "file" : "repository")+ ": " + dep.Resource);
+            Console.Write("    Downloading "+(dep.Type == DependencyType.File ? "file" : "repository")+ ": ");
+            ConsoleColorChanger.UseSecondary();
+            Console.WriteLine(dep.Resource);
+            ConsoleColorChanger.UsePrimary();
 
             if(dep.Type == DependencyType.File) {
                 string srcPath = Path.Combine(dirPath, "src");
@@ -214,7 +232,7 @@ namespace wlpm
 
                     return result;
                 } else {
-                    throw new PackageException("Cannot resolve package: " + dep.Resource + ", wrong URL host for file type: '" + dep.Resource + "'");
+                    throw new PackageException("    Cannot resolve package: " + dep.Resource + ", wrong URL host for file type: '" + dep.Resource + "'");
                 }
             } else if(provider != null) {
                 string tmpFilePath = Path.Combine(tmpRoot, "wlpm-repository.zip");
@@ -230,30 +248,35 @@ namespace wlpm
                 string packageConfigPath = Path.Combine(dirPath, ProjectPackageName);
 
                 if(! File.Exists(packageConfigPath)) {
-                    throw new PackageException("Cannot resolve package: " + dep.Resource + ", file '" + ProjectPackageName + "' not found inside");
+                    throw new PackageException("    Cannot resolve package: " + dep.Resource + ", file '" + ProjectPackageName + "' not found inside");
                 }
                 return new Package(File.ReadAllText(packageConfigPath));
             }
-            throw new PackageException("Cannot resolve package: " + dep.Resource + ", no suitable repository provider for this url");
+            throw new PackageException("    Cannot resolve package: " + dep.Resource + ", no suitable repository provider for this url");
         }
 
         private Package FindProjectPackage()
         {
-            Console.Write("Locating " + ProjectPackageName + " ... ");
+            Console.Write("    Locating ");
+            ConsoleColorChanger.UseSecondary();
+            Console.Write(ProjectPackageName);
+            ConsoleColorChanger.UsePrimary();
+            Console.Write(" ... ");
+            
             string packageConfigPath = Path.Combine(ProjectDirectory, ProjectPackageName);
             if(! File.Exists(packageConfigPath)) {
                 Console.Write("creating a new file ... ");
                 File.WriteAllText(packageConfigPath, Package.getDefaultConfiguration());
             } else {
-                Console.Write("found, reading ... ");
+                Console.Write("found ... reading ... ");
             }
 
             string jsonStr = "";
-            for (int i=1; i <= 3; ++i) {
+            for (int i=1; i <= 30; ++i) {
                 try {
                     jsonStr = File.ReadAllText(packageConfigPath);
                     break;
-                } catch (IOException) when (i <= 3) { Thread.Sleep(1000); }
+                } catch (IOException) when (i <= 30) { Thread.Sleep(200); }
             }
             
             Console.WriteLine("parsing");
@@ -271,7 +294,7 @@ namespace wlpm
             string packagesSubdir = Path.Combine(packageDirPath, "packages");
 
             if(! Directory.Exists(packagesSubdir)) {
-                if(VerboseLog) Console.WriteLine("-- creating "+packagesSubdir);
+                if(VerboseLog) Console.WriteLine("-- Creating "+packagesSubdir);
                 Directory.CreateDirectory(packagesSubdir);
             }
         }

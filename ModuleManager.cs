@@ -1,11 +1,16 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
 
 namespace wlpm
 {
     public class ModuleManager: DelayedBusyState
     {
+        public delegate void executionCallback();
+
+        private DateTime targetLastChange;
+
         private bool VerboseLog = false;
         private PackageManager pm;
         private string ClientScriptStart = "-- (wlpm-generated-code start)";
@@ -17,18 +22,48 @@ namespace wlpm
             pm = _pm;
             VerboseLog = verboseLog;
             AppVersion = appVersion;
+            Clear();
         }
 
-        public void RebuildModules()
+        public void RebuildModules(executionCallback onSuccess = null)
         {
-            pm.invokeASAP("ModuleManager.RebuildModules", _RebuildModules);
+            pm.invokeASAP("ModuleManager.RebuildModules", () => {
+              _RebuildModules();
+              if(onSuccess != null) onSuccess();
+            });
+        }
+
+        public void Clear()
+        {
+            targetLastChange = DateTime.UtcNow;
+            targetLastChange.AddDays(-1);
+        }
+
+        public bool IsTargetChangedOutside()
+        {
+            string targetFilename = Path.Combine(pm.ProjectDirectory, pm.ProjectPackage.Target);
+            DateTime dt = File.GetLastWriteTimeUtc(targetFilename);
+            return dt.CompareTo(targetLastChange) != 0;
         }
 
         private void _RebuildModules()
         {
-            Console.WriteLine("================= Rebuilding modules =================");
+            isBusy = true;
+            
+            ConsoleColorChanger.UseAccent();
+            Console.WriteLine("Rebuilding modules");
+            ConsoleColorChanger.UsePrimary();
+
             string targetFilename = Path.Combine(pm.ProjectDirectory, pm.ProjectPackage.Target);
-            string targetOriginal = File.ReadAllText(targetFilename);
+            string targetOriginal = "";
+
+            for (int i=1; i <= 30; ++i) {
+                try {
+                    targetOriginal = File.ReadAllText(targetFilename);
+                    break;
+                } catch (IOException) when (i <= 30) { Thread.Sleep(200); }
+            }
+
 
             targetOriginal = RemoveBetween(targetOriginal, ClientScriptStart, ClientScriptEnd);
 
@@ -38,7 +73,21 @@ namespace wlpm
 
             targetHeader += "\r\r-- Warcraft 3 Lua Package Manager " + AppVersion;
             targetHeader += "\r-- Build time: " + DateTime.Now.ToString("yyyy.MM.dd HH:mm:ss zzz");
-            targetHeader += pm.ProjectPackage.InsertModuleLoader ? "\r"+GetClientScript() : "";
+            if(pm.ProjectPackage.InsertModuleLoader) {
+              Console.Write("    Code of ");
+              ConsoleColorChanger.UseSecondary();
+              Console.Write("WLPM Module Manager");
+              ConsoleColorChanger.UsePrimary();
+              Console.WriteLine(@" added to the header. To disable, set ""insertModuleLoader"" to false in your " + pm.ProjectPackageName);
+              targetHeader += "\r"+GetClientScript();
+            } else {
+              Console.Write("Code of ");
+              ConsoleColorChanger.UseSecondary();
+              Console.Write("WLPM Module Manager");
+              ConsoleColorChanger.UsePrimary();
+              Console.WriteLine(" is skipped according to your " + pm.ProjectPackageName);
+
+            }
             targetHeader += "\r\r";
 
             foreach(KeyValuePair<string, PackageDependency> dep in pm.Dependencies) {
@@ -52,13 +101,27 @@ namespace wlpm
 
             string target = ClientScriptStart + targetHeader + targetTop + targetBottom + ClientScriptEnd + targetOriginal;
 
-            File.WriteAllText(targetFilename, target);
-            Console.WriteLine("================= Rebuilding DONE =================");
+            for (int i=1; i <= 30; ++i) {
+                try {
+                    File.WriteAllText(targetFilename, target);
+                    break;
+                } catch (IOException) when (i <= 30) { Thread.Sleep(200); }
+            }
+
+            UnsubscribeASAPEvent("ModuleManager.RebuildModules");
+
+            targetLastChange = File.GetLastWriteTimeUtc(targetFilename);
+
+            isBusy = false;
         }
 
         private string GetCodeFor(PackageDependency dep)
         {
-            Console.WriteLine("Generating code for: "+dep.Resource);
+            Console.Write("    Building ");
+            ConsoleColorChanger.UseSecondary();
+            Console.WriteLine(dep.Resource);
+            ConsoleColorChanger.UsePrimary();
+
             var dirs = new List<string>();
             string result = GetClientScriptTagStart(dep.Resource);
 
@@ -92,7 +155,7 @@ namespace wlpm
             }
             var ends = source.IndexOf(end) + end.Length;
             if(ends == -1) {
-                throw new ModuleException("Cannot clean target file: end tag not found ("+end+")");
+                throw new ModuleException("    Cannot clean target file: end tag not found ("+end+")");
             }
             if(starts < 2) {
                 return source.Substring(ends);

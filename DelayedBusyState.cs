@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 
@@ -7,7 +8,7 @@ namespace wlpm
 
     public class DelayedBusyState
     {
-        ConcurrentDictionary<string, executionCallback> handlers;
+        ConcurrentDictionary<string, executionCallback> asapHandlers;
 
         public bool isBusy {
             get{ return _isBusy; }
@@ -22,7 +23,7 @@ namespace wlpm
 
         public DelayedBusyState()
         {
-            handlers = new ConcurrentDictionary<string, executionCallback>();
+            asapHandlers = new ConcurrentDictionary<string, executionCallback>();
         }
 
         /**
@@ -31,10 +32,10 @@ namespace wlpm
         public void invokeASAP(string uniqueId, executionCallback handler)
         {
             executionCallback h = null;
-            if(handlers.ContainsKey(uniqueId)) {
-                handlers.Remove(uniqueId, out h);
+            if(asapHandlers.ContainsKey(uniqueId)) {
+                asapHandlers.Remove(uniqueId, out h);
             }
-            handlers.AddOrUpdate(uniqueId, handler, (k,v) => {
+            asapHandlers.AddOrUpdate(uniqueId, handler, (k,v) => {
                 return v;
             });
 
@@ -43,11 +44,24 @@ namespace wlpm
             }
         }
 
+        public void UnsubscribeASAPEvent(string uniqueId)
+        {
+            executionCallback h = null;
+            if(asapHandlers.ContainsKey(uniqueId)) {
+                asapHandlers.Remove(uniqueId, out h);
+            }
+        }
+
+        public bool IsSubscribedOnASAP(string uniqueId)
+        {
+            return asapHandlers.ContainsKey(uniqueId);
+        }
+
         private void invokeAll()
         {
             executionCallback h = null;
-            foreach(KeyValuePair<string, executionCallback> handler in handlers) {
-                handlers.Remove(handler.Key, out h);
+            foreach(KeyValuePair<string, executionCallback> handler in asapHandlers) {
+                asapHandlers.Remove(handler.Key, out h);
                 handler.Value.Invoke();
             }
         }
