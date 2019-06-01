@@ -8,7 +8,10 @@ namespace wlpm
     {
         static void Main(string[] args)
         {
-            new Application(Environment.CurrentDirectory, args);
+            System.Reflection.Assembly assembly = System.Reflection.Assembly.GetExecutingAssembly();
+            FileVersionInfo fvi = FileVersionInfo.GetVersionInfo(assembly.Location);
+
+            new Application(Environment.CurrentDirectory, args, fvi.ProductVersion);
         }
     }
 }

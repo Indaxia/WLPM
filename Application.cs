@@ -13,13 +13,14 @@ namespace wlpm
         private bool VerboseLog = false;
         private PackageManager pm;
         private ModuleManager mm;
-        private string Version = "0.3-beta";
+        private string Version = "0.0.0.1"; // this is dynamically retrieved from assembly info
         private int RetryAttempt = 0;
         private List<FileSystemWatcher> Watchers = null;
         private Dictionary<string, DateTime> WatcherChangedFilesCache;
 
-        public Application(string projectDir, string[] args) 
+        public Application(string projectDir, string[] args, string version) 
         {
+            Version = version;
             ConsoleColorChanger.SetPrimary(Console.ForegroundColor);
 
             if(args.Length < 1) {

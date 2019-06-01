@@ -1,9 +1,15 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+    <Product>Warcraft 3 Lua Package Manager</Product>
+    <Company>Indaxia</Company>
+    <Copyright>ScorpioT1000 © 2019</Copyright>
+    <Description>Warcraft 3 Lua Package Manager includes package manager and module loader</Description>
+  </PropertyGroup>
+
+  <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>netcoreapp2.2</TargetFramework>
-    <RuntimeIdentifiers>win7-x86;win7-x64;win81-x86;win81-x64;win10-x86;win10-x64</RuntimeIdentifiers>
   </PropertyGroup>
 
   <ItemGroup>
