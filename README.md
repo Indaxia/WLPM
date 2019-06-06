@@ -62,7 +62,7 @@ To get help about module management refer the [MM documents](https://github.com/
 ### Including files
 You can include files directly (Big Integer in the example):
 ```
-wlpm install https://raw.githubusercontent.com/DeBos99/lua-bigint/master/bigint.lua
+wlpm install https://raw.githubusercontent.com/DeBos99/lua-bigint/master/bigint.lua * file
 ```
 
 ### Disabling Module Manager (MM) script
@@ -71,6 +71,13 @@ If you don't want to use MM on the client (Lua) side you can disable it by addin
   "insertModuleLoader": false
 ```
 With this option MM just includes code of the dependencies without the MM
+
+### Executing a command after building
+It's possible execute a terminal command when the building process finishes:
+```
+  "afterBuild": "echo \"hello world\""
+```
+It works for root projects only.
 
 ## Publishing Packages
 
@@ -110,7 +117,7 @@ If you want to publish your package folow these steps:
     ],
     // (optional) where to store compiled lua build. It works for root project only.
     "target": "war3map.lua",
-    // (not implemented, optional) execute this command after build, e.g. "cmd /K echo Hello!"
+    // (optional) execute this command after build, e.g. "echo \"Hello!\""
     "afterBuild": "",
     // (optional) set this to false if you want to replace built-in module manager by your own
     "insertModuleLoader": true,
@@ -135,9 +142,8 @@ You are free to fork and build your own modifications! My requirement is that an
 ### How to build
 
 ```
-$version = git describe --tags --abbrev=0
-dotnet publish -c Release --self-contained --runtime win10-x64 /property:Version=$version
-dotnet publish -c Release --self-contained --runtime win-x86 /property:Version=$version
+dotnet publish -c Release --self-contained --runtime win10-x64 /property:Version=VERSION_HERE
+dotnet publish -c Release --self-contained --runtime win-x86 /property:Version=VERSION_HERE
 ```
 
 ScorpioT1000 © 2019
