@@ -7,7 +7,7 @@
 ; (To generate a new GUID, click Tools | Generate GUID inside the IDE.)
 AppId={{971F467E-1815-46E0-83BE-DB1FC661097D}
 AppName=Warcraft 3 Lua Package Manager
-AppVersion=0.6-beta
+AppVersion=GetFileProductVersion("..\bin\Release\netcoreapp2.2\win10-x64\publish\wlpm.dll")
 AppPublisher=Indaxia
 AppPublisherURL=https://github.com/Indaxia/WLPM
 AppSupportURL=https://github.com/Indaxia/WLPM/issues
@@ -26,7 +26,7 @@ ArchitecturesInstallIn64BitMode=x64
 InfoAfterFile=..\README.md
 UninstallDisplayName=Warcraft 3 Lua Package Manager (WLPM)
 AppCopyright=ScorpioT1000 © 2019
-VersionInfoProductVersion=0.6
+VersionInfoProductVersion=GetFileProductVersion("..\bin\Release\netcoreapp2.2\win10-x64\publish\wlpm.dll")
 SetupIconFile=..\Resources\install.ico
 AlwaysShowGroupOnReadyPage=True
 AlwaysShowDirOnReadyPage=True
