@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Threading;
 
@@ -14,7 +15,7 @@ namespace wlpm
         private bool VerboseLog = false;
         private PackageManager pm;
         private string ClientScriptStart = "-- (wlpm-generated-code start)";
-        private string ClientScriptEnd = "-- (wlpm-generated-code end)\r\r";
+        private string ClientScriptEnd = "-- (wlpm-generated-code end)\n";
         private string AppVersion;
 
         public ModuleManager(PackageManager _pm, bool verboseLog, string appVersion)
@@ -69,17 +70,17 @@ namespace wlpm
 
             string targetHeader = "";
             string targetTop = ""; 
-            string targetBottom = "\r\r";
+            string targetBottom = "\n\n";
 
-            targetHeader += "\r\r-- Warcraft 3 Lua Package Manager " + AppVersion;
-            targetHeader += "\r-- Build time: " + DateTime.Now.ToString("yyyy.MM.dd HH:mm:ss zzz");
+            targetHeader += "\n\n-- Warcraft 3 Lua Package Manager " + AppVersion;
+            targetHeader += "\n-- Build time: " + DateTime.Now.ToString("yyyy.MM.dd HH:mm:ss zzz");
             if(pm.ProjectPackage.InsertModuleLoader) {
               Console.Write("  Code of ");
               ConsoleColorChanger.UseSecondary();
               Console.Write("WLPM Module Manager");
               ConsoleColorChanger.UsePrimary();
               Console.WriteLine(@" added to the header. To disable, set ""insertModuleLoader"" to false in your " + pm.ProjectPackageName);
-              targetHeader += "\r"+GetClientScript();
+              targetHeader += "\n"+GetClientScript();
             } else {
               Console.Write("Code of ");
               ConsoleColorChanger.UseSecondary();
@@ -88,7 +89,7 @@ namespace wlpm
               Console.WriteLine(" is skipped according to your " + pm.ProjectPackageName);
 
             }
-            targetHeader += "\r\r";
+            targetHeader += "\n\n";
 
             foreach(string index in pm.DependenciesOrderIndex) {
                 if(! pm.Dependencies.ContainsKey(index)) {
@@ -97,13 +98,15 @@ namespace wlpm
                 PackageDependency dep = pm.Dependencies[index];
                 string code = GetCodeFor(dep);
                 if(dep.TopOrder) {
-                    targetTop += "\r\r" + code;
+                    targetTop += "\n\n" + code;
                 } else {
-                    targetBottom += "\r\r" + code;
+                    targetBottom += "\n\n" + code;
                 }
             }
 
-            string target = ClientScriptStart + targetHeader + targetTop + targetBottom + ClientScriptEnd + targetOriginal;
+            targetBottom += GetCodeFor(pm.ProjectPackage.Sources.ToArray());
+
+            string target = ClientScriptStart + targetHeader + targetTop + targetBottom + "\n" + ClientScriptEnd + targetOriginal;
 
             for (int i=1; i <= 30; ++i) {
                 try {
@@ -116,7 +119,67 @@ namespace wlpm
 
             targetLastChange = File.GetLastWriteTimeUtc(targetFilename);
 
+            ExecuteAfterBuild();
+
             isBusy = false;
+        }
+
+        private void ExecuteAfterBuild()
+        {
+            if(pm.ProjectPackage.AfterBuild.Length > 0) {
+                Console.WriteLine("");
+                Console.Write("  Executing ");
+                ConsoleColorChanger.UseSecondary();
+                Console.WriteLine(pm.ProjectPackage.AfterBuild);
+                ConsoleColorChanger.UsePrimary();
+
+                Process cmd = new Process();
+                cmd.StartInfo.FileName = "cmd.exe";
+                cmd.StartInfo.Arguments = "/C " + pm.ProjectPackage.AfterBuild;
+                cmd.StartInfo.RedirectStandardInput = true;
+                cmd.StartInfo.RedirectStandardOutput = true;
+                cmd.StartInfo.CreateNoWindow = true;
+                cmd.StartInfo.UseShellExecute = false;
+                cmd.Start();
+
+                cmd.StandardInput.Flush();
+                cmd.StandardInput.Close();
+                cmd.WaitForExit();
+                ConsoleColorChanger.UseSecondary();
+                Console.WriteLine("");
+                Console.WriteLine(cmd.StandardOutput.ReadToEnd());
+            }
+        }
+
+        private string GetCodeFor(string[] dirs)
+        {
+          if(dirs.Length < 1) { 
+            return "";
+          }
+
+          string result = "";
+
+          foreach(string dir in dirs) {
+            string dirPath = Path.Combine(pm.ProjectDirectory, dir);
+            string[] files = Directory.GetFiles(dirPath, pm.ProjectPackage.SourceExtensions, SearchOption.AllDirectories);
+            foreach(string file in files) {
+              Console.Write("  Building source ");
+              ConsoleColorChanger.UseSecondary();
+              Console.WriteLine(file);
+              ConsoleColorChanger.UsePrimary();
+
+              for (int i=1; i <= 30; ++i) {
+                  try {
+                      result += "\n\n-- " + file + "\n" + File.ReadAllText(file);
+                      break;
+                  } catch (IOException) when (i <= 30) { Thread.Sleep(200); }
+              }
+            }
+
+            result += GetCodeFor(Directory.GetDirectories(dirPath));
+          }
+
+          return result;
         }
 
         private string GetCodeFor(PackageDependency dep)
@@ -137,12 +200,12 @@ namespace wlpm
                 
                 var filenames = new List<string>();
                 foreach(var dir in dirs) {
-                    filenames.AddRange(Directory.GetFiles(dir, "*.lua", SearchOption.AllDirectories));
+                    filenames.AddRange(Directory.GetFiles(dir, pm.ProjectPackage.SourceExtensions, SearchOption.AllDirectories));
                 }
 
                 foreach(var filename in filenames) {
                     if(VerboseLog) Console.WriteLine("-- Loading code from: "+filename);
-                    result += "\r\r" + File.ReadAllText(filename);
+                    result += "\n\n" + File.ReadAllText(filename);
                 }
             } else {
                 result += File.ReadAllText(pm.GetDependencyFile(dep));
@@ -157,24 +220,21 @@ namespace wlpm
             if(starts == -1) {
                 return source;
             }
-            var ends = source.IndexOf(end) + end.Length;
+            var ends = source.IndexOf(end);
             if(ends == -1) {
-                throw new ModuleException("  Cannot clean target file: end tag not found ("+end+")");
+                throw new ModuleException("  Cannot clean target file: end tag not found: "+end);
             }
-            if(starts < 2) {
-                return source.Substring(ends);
-            }
-            return source.Substring(0, starts - 1) + source.Substring(ends);
+            return source.Substring(0, starts) + source.Substring(ends + end.Length);
         }
 
         private string GetClientScriptTagStart(string id)
         {
-            return "-- (wlpm-start) " + id + "\r";
+            return "-- (wlpm-start) " + id + "\n";
         }
 
         private string GetClientScriptTagEnd(string id)
         {
-            return "\r-- (wlpm-end) " + id;
+            return "\n-- (wlpm-end) " + id;
         }
 
         private string GetClientScript() // TODO: import from the solution dir

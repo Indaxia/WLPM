@@ -48,44 +48,26 @@ namespace wlpm
             return Path.Combine(ProjectDirectory, ProjectPackageDir, "packages", dep.id, "src", "file.lua");
         }
 
-        public void InstallDependency(string url, string version)
+        public void InstallDependency(string url, string version, bool isFile = false)
         {
-            string id = PackageDependency.generateId(url, version);
+            ProjectPackage = FindProjectPackage();
 
-            if(Dependencies.ContainsKey(id)) {
-                ConsoleColorChanger.UseWarning();
-                Console.WriteLine("This dependency already exists");
-                ConsoleColorChanger.UsePrimary();
-            } else {
-                string packageConfigPath = Path.Combine(ProjectDirectory, ProjectPackageName);
-                ArrayList lines = new ArrayList();
-                StreamReader rdr = new StreamReader(packageConfigPath);
-                string line;
-                bool found = false;
-                while ((line = rdr.ReadLine()) != null) {
-                    lines.Add(line);
-                    if(line.Contains("\"dependencies\":")) {
-                        found = true;
-                        lines.Add("      \"" + url + "\": \"" + ((version != "*" && version.Length > 0) ? version : "*") + "\",");
-                    }
+            foreach(PackageDependency dep in ProjectPackage.Dependencies) {
+                if(dep.Resource == url && dep.Version == version) {
+                    ConsoleColorChanger.UseWarning();
+                    Console.WriteLine("This dependency already exists");
+                    ConsoleColorChanger.UsePrimary();
+                    return;
                 }
-                rdr.Close();
-                StreamWriter wrtr = new StreamWriter(packageConfigPath);
-                if(!found) {
-                    lines.RemoveAt(0);
-                    lines.Insert(0, "{");
-                    lines.Insert(0, "  \"dependencies\": {");
-                    lines.Insert(0, "      \"" + url + "\": \"" + ((version != "*" && version.Length > 0) ? version : "*") + "\"");
-                    lines.Insert(0, "  },");
-                }
-                foreach (string strNewLine in lines) wrtr.WriteLine(strNewLine);
-                wrtr.Close(); 
-
-                RefreshPackages(true);
             }
+
+            ProjectPackage.Dependencies.Add(new PackageDependency(isFile ? DependencyType.File : DependencyType.Package, url, version));
+
+            SaveProjectPackage(ProjectPackage);            
+            RefreshPackages(true, true);
         }
 
-        public void RefreshPackages(bool loadAgain = false, bool neverLoadAgain = false)
+        public void RefreshPackages(bool loadAgain = false, bool packageIsLocated = false)
         {
             isBusy = true;
             ConsoleColorChanger.UseAccent();
@@ -102,7 +84,9 @@ namespace wlpm
                 oldPackageDeps = ProjectPackage.Dependencies;
             }
 
-            ProjectPackage = FindProjectPackage();
+            if(!packageIsLocated) {
+                ProjectPackage = FindProjectPackage();
+            }
 
             refreshPackageDir();
             
@@ -151,7 +135,7 @@ namespace wlpm
                 Console.WriteLine("  Dependencies are OK");
             }
 
-            if(loadAgain && !neverLoadAgain) {
+            if(loadAgain) {
                 Dependencies.Clear();
                 DependenciesOrderIndex.Clear();
                 UpdatePackages();
@@ -178,7 +162,7 @@ namespace wlpm
 
             JObject jsonDeps = new JObject();
             foreach(KeyValuePair<string, PackageDependency> kv in Dependencies) {
-                jsonDeps.Add(kv.Value.toJson(true));
+                jsonDeps.Add(kv.Value.ToJson(true));
             }
             JObject jsonObj = new JObject(new JProperty("dependencies", jsonDeps));
             File.WriteAllText(stateLockPath, jsonObj.ToString());
@@ -277,10 +261,10 @@ namespace wlpm
             
             string packageConfigPath = Path.Combine(ProjectDirectory, ProjectPackageName);
             if(! File.Exists(packageConfigPath)) {
-                Console.Write("creating a new file ... ");
+                Console.Write("creating ... ");
                 File.WriteAllText(packageConfigPath, Package.getDefaultConfiguration());
             } else {
-                Console.Write("found ... reading ... ");
+                Console.Write("parsing ... ");
             }
 
             string jsonStr = "";
@@ -291,8 +275,23 @@ namespace wlpm
                 } catch (IOException) when (i <= 30) { Thread.Sleep(200); }
             }
             
-            Console.WriteLine("parsing");
-            return new Package(jsonStr);
+            var result = new Package(jsonStr);
+            Console.WriteLine("done.");
+            return result;
+        }
+
+        private void SaveProjectPackage(Package pp)
+        {
+            string packageConfigPath = Path.Combine(ProjectDirectory, ProjectPackageName);
+            Console.Write("  Saving ");
+            ConsoleColorChanger.UseSecondary();
+            Console.Write(ProjectPackageName);
+            ConsoleColorChanger.UsePrimary();
+            Console.Write(" ... ");
+
+            File.WriteAllText(packageConfigPath, pp.ToJson().ToString());
+
+            Console.WriteLine("done!");
         }
 
         private void refreshPackageDir()

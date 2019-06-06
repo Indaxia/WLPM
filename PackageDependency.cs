@@ -47,6 +47,15 @@ namespace wlpm
             Sources = new List<string>();
         }
 
+        public PackageDependency(DependencyType type, string resource, string version = "*", bool topOrder = false)
+        {
+            Type = type;
+            Version = version;
+            TopOrder = topOrder;
+            Resource = resource;
+            Sources = new List<string>();
+        }
+
         public PackageDependency(PackageDependency other)
         {
             Type = other.Type;
@@ -106,7 +115,7 @@ namespace wlpm
                 && TopOrder == another.TopOrder;
         }
 
-        public JProperty toJson(bool asState = false)
+        public JProperty ToJson(bool asState = false)
         {
             if(asState || Type != DependencyType.Package || TopOrder) {
                 var resultObj = new JObject(
@@ -118,12 +127,12 @@ namespace wlpm
                 }
                 if(asState) {
                     resultObj.Add(new JProperty("resource", Resource));
+                    JArray sourcesArr = new JArray();
+                    foreach(var s in Sources) {
+                        sourcesArr.Add(s);
+                    }
+                    resultObj.Add(new JProperty("sources", sourcesArr));
                 }
-                JArray sourcesArr = new JArray();
-                foreach(var s in Sources) {
-                    sourcesArr.Add(s);
-                }
-                resultObj.Add(new JProperty("sources", sourcesArr));
                 return new JProperty(asState ? id : Resource, resultObj);
             }
             return new JProperty(Resource, (string)Version);

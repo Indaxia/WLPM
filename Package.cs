@@ -7,6 +7,9 @@ namespace wlpm
 {
     public class Package
     {
+        public const string DefaultTarget = "war3map.lua";
+        public const string DefaultSourceExtensions = "*.lua";
+
         public string Title { get; set; }
         public string Author { get; set; }  
         public string License { get; set; }
@@ -36,10 +39,10 @@ namespace wlpm
             License = "";
             Dependencies = new List<PackageDependency>();
             Sources = new List<string>();
-            Target = "war3map.lua";
+            Target = DefaultTarget;
             AfterBuild = "";
             InsertModuleLoader = true;
-            SourceExtensions = "*.lua";
+            SourceExtensions = DefaultSourceExtensions;
             AllowHosts = new List<string>();
         }
 
@@ -91,9 +94,47 @@ namespace wlpm
             }
         }
 
+        public JObject ToJson()
+        {
+            var result = new JObject();
+            if(Title.Length > 0) {
+                result.Add(new JProperty("title", Title));
+            }
+            if(Author.Length > 0) {
+                result.Add(new JProperty("author", Author));
+            }
+            if(License.Length > 0) {
+                result.Add(new JProperty("license", License));
+            }
+            var deps = new JObject();
+            foreach(PackageDependency dep in Dependencies) {
+                deps.Add(dep.ToJson());
+            }
+            result.Add(new JProperty("dependencies", deps));
+            if(Sources.Count > 0) {
+                result.Add(new JProperty("sources", new JArray(Sources.ToArray())));
+            }
+            if(Target.Length > 0 && Target != DefaultTarget) {
+                result.Add(new JProperty("target", Target));
+            }
+            if(AfterBuild.Length > 0) {
+                result.Add(new JProperty("afterBuild", AfterBuild));
+            }
+            if(!InsertModuleLoader) {
+                result.Add(new JProperty("insertModuleLoader", false));
+            }
+            if(SourceExtensions.Length > 0 && SourceExtensions != DefaultSourceExtensions) {
+                result.Add(new JProperty("sourceExtensions", SourceExtensions));
+            }
+            if(AllowHosts.Count > 0) {
+                result.Add(new JProperty("allowHosts", AllowHosts.ToArray()));
+            }
+            return result;
+        }
+
         public static string getDefaultConfiguration()
         {
-            return "{\r\n  \"title\": \"project\",\r\n  \"dependencies\": {}\r\n}";
+            return "{\n  \"title\": \"project\",\n  \"dependencies\": {}\n}";
         }
     }
 }

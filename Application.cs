@@ -28,8 +28,8 @@ namespace wlpm
                 Console.WriteLine("Warcraft 3 Lua Package Manager "+Version+" (WLPM) by ScorpioT1000");
                 Console.WriteLine("Get more info at: https://github.com/Indaxia/WLPM");
                 Console.WriteLine("Arguments:");
-                Console.WriteLine("  install <package> [<version>]");
-                Console.WriteLine("  - adds a new package to your package file and installs dependencies. Omit version to require head revision");
+                Console.WriteLine("  install <package> [<version>] [file]");
+                Console.WriteLine("  - adds a new package or file to your package file and installs dependencies. Omit version to require head revision. To add a file type 'file' as a third parameter");
                 Console.WriteLine("  update");
                 Console.WriteLine("  - removes any package data and re-downloads it from the internet");
                 Console.WriteLine("  build");
@@ -63,21 +63,23 @@ namespace wlpm
 
             for(; RetryAttempt < 3; ++RetryAttempt) {
                 try {
-                    pm.RefreshPackages(hasArg(args, "update"), hasArg(args, "install"));
                     if(hasArg(args, "build")) {
+                        pm.RefreshPackages();
                         mm.RebuildModules();
                         return;
                     } else if(hasArg(args, "install")) {
                         if(args.Length < 2) {
                             Console.WriteLine("install format: install url [version]");
                         } else {
-                            pm.InstallDependency(args[1], args.Length > 2 ? args[2] : "*");
+                            pm.InstallDependency(args[1], args.Length > 2 ? args[2].Trim() : "*", args.Length > 3 && args[3] == "file");
                         }
                         return;
                     } else if(hasArg(args, "watch")) {
+                        pm.RefreshPackages();
                         mm.RebuildModules();
                         WatchForChanges();
                     } else if(hasArg(args, "update")) {
+                        pm.RefreshPackages(true);
                         return;
                     } else {
                         Console.WriteLine("Wrong command, execute the program without arguments to get help");
