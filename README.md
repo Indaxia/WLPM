@@ -1,5 +1,5 @@
 > [!CAUTION]
-> WLPM IS DEPRECATED - USE [IMP](https://github.com/Indaxia/imp-lua)
+> WLPM IS DEPRECATED - USE [IMP](https://github.com/Indaxia/imp)
 
 ## Warcraft 3 Lua Package Manager
 A modern solution for Warcraft 3 map development!
